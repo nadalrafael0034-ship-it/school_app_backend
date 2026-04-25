@@ -17,6 +17,11 @@ const classSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Grade is required'],
     },
+    classTeacher: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     teachers: [
       {
         type: mongoose.Schema.Types.ObjectId,

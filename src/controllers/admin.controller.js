@@ -27,7 +27,8 @@ const getAllUsers = async (req, res) => {
 // @route POST /api/admin/users
 const createUser = async (req, res) => {
   try {
-    const user = await User.create(req.body);
+    const { classTeacherId, ...userData } = req.body;
+    const user = await User.create(userData);
 
     // If student, add to class
     if (user.role === 'student' && user.class) {
@@ -42,6 +43,23 @@ const createUser = async (req, res) => {
         { _id: { $in: req.body.classIds } },
         { $addToSet: { teachers: user._id } }
       );
+    }
+
+    // If teacher is being set as class teacher for a specific class
+    if (user.role === 'teacher' && classTeacherId) {
+      // Remove from any current class teacher assignment
+      await Class.updateMany(
+        { classTeacher: user._id },
+        { $set: { classTeacher: null } }
+      );
+      // Set as class teacher
+      await Class.findByIdAndUpdate(classTeacherId, {
+        $set: { classTeacher: user._id },
+        $addToSet: { teachers: user._id },
+      });
+      // Sync it back to the Teacher user document so it shows in the DB
+      await User.findByIdAndUpdate(user._id, { class: classTeacherId });
+      user.class = classTeacherId;
     }
 
     res.status(201).json({ success: true, message: 'User created successfully.', user });
@@ -73,7 +91,7 @@ const getUserById = async (req, res) => {
 // @route PUT /api/admin/users/:id
 const updateUser = async (req, res) => {
   try {
-    const { password, ...updateData } = req.body;
+    const { password, classTeacherId, removeClassTeacher, ...updateData } = req.body;
 
     const user = await User.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
@@ -81,6 +99,32 @@ const updateUser = async (req, res) => {
     });
 
     if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+
+    // Handle class teacher assignment for teachers
+    if (user.role === 'teacher') {
+      if (removeClassTeacher) {
+        // Remove from any class teacher assignment
+        await Class.updateMany(
+          { classTeacher: user._id },
+          { $set: { classTeacher: null } }
+        );
+        await User.findByIdAndUpdate(user._id, { class: null });
+        user.class = null;
+      } else if (classTeacherId) {
+        // Clear previous assignment
+        await Class.updateMany(
+          { classTeacher: user._id },
+          { $set: { classTeacher: null } }
+        );
+        // Set new class teacher
+        await Class.findByIdAndUpdate(classTeacherId, {
+          $set: { classTeacher: user._id },
+          $addToSet: { teachers: user._id },
+        });
+        await User.findByIdAndUpdate(user._id, { class: classTeacherId });
+        user.class = classTeacherId;
+      }
+    }
 
     res.json({ success: true, message: 'User updated successfully.', user });
   } catch (error) {
@@ -112,6 +156,7 @@ const getAllClasses = async (req, res) => {
   try {
     const classes = await Class.find({ isActive: true })
       .populate('teachers', 'name email employeeId')
+      .populate('classTeacher', '_id name email')
       .populate('subjects', 'name code')
       .sort({ grade: 1, name: 1 });
 

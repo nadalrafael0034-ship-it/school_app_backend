@@ -8,9 +8,9 @@ const attendanceRecordSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['present', 'absent', 'late'],
+    enum: ['present', 'absent'],
     required: true,
-    default: 'absent',
+    default: 'present',
   },
   remark: {
     type: String,
@@ -28,7 +28,7 @@ const attendanceSchema = new mongoose.Schema(
     subject: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Subject',
-      required: [true, 'Subject is required'],
+      default: null,
     },
     teacher: {
       type: mongoose.Schema.Types.ObjectId,
@@ -39,18 +39,23 @@ const attendanceSchema = new mongoose.Schema(
       type: Date,
       required: [true, 'Date is required'],
     },
+    period: {
+      type: String,
+      enum: ['morning'],
+      default: 'morning',
+    },
     records: [attendanceRecordSchema],
     isFinalized: {
       type: Boolean,
-      default: false,
+      default: true,
     },
   },
   { timestamps: true }
 );
 
-// Compound index: one attendance per class/subject/date
+// Compound index: one morning attendance per class per date
 attendanceSchema.index(
-  { class: 1, subject: 1, date: 1 },
+  { class: 1, date: 1, period: 1 },
   { unique: true }
 );
 
@@ -59,8 +64,7 @@ attendanceSchema.virtual('summary').get(function () {
   const total = this.records.length;
   const present = this.records.filter((r) => r.status === 'present').length;
   const absent = this.records.filter((r) => r.status === 'absent').length;
-  const late = this.records.filter((r) => r.status === 'late').length;
-  return { total, present, absent, late };
+  return { total, present, absent };
 });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);
