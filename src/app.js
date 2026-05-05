@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
 const teacherRoutes = require('./routes/teacher.routes');
 const studentRoutes = require('./routes/student.routes');
+const leaveRoutes = require('./routes/leave.routes');
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/leave', leaveRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
