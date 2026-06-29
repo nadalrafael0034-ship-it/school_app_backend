@@ -96,4 +96,33 @@ const changePassword = async (req, res) => {
   }
 };
 
-module.exports = { login, getMe, changePassword };
+// @desc  Save FCM token for push notifications
+// @route POST /api/auth/fcm-token
+// @access Private
+const saveFcmToken = async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+    if (!fcmToken) {
+      return res.status(400).json({ success: false, message: 'FCM token is required.' });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    // Add token if not already stored (avoid duplicates)
+    if (!user.fcmTokens.includes(fcmToken)) {
+      user.fcmTokens.push(fcmToken);
+      // Keep only the last 5 tokens (multiple devices)
+      if (user.fcmTokens.length > 5) {
+        user.fcmTokens = user.fcmTokens.slice(-5);
+      }
+      await user.save();
+    }
+
+    res.status(200).json({ success: true, message: 'FCM token saved.' });
+  } catch (error) {
+    console.error('FCM token save error:', error);
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+module.exports = { login, getMe, changePassword, saveFcmToken };
