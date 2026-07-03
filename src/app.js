@@ -13,7 +13,7 @@ const announcementRoutes = require('./routes/announcement.routes');
 
 const app = express();
 
-// Connect to MongoDB
+// Connect to MongoDB 
 connectDB();
 
 // Middleware
